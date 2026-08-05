@@ -1,0 +1,4 @@
+you have the prototype in .plan\Prototype\index.html
+your task is to convert this index.html into the current Next.js with openNext project
+you have all info in README.md
+related files: src/**

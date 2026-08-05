@@ -1,0 +1,271 @@
+@import "tailwindcss";
+
+@theme {
+  /* Custom colors */
+  --color-ink: #14181f;
+  --color-panel: #1b212b;
+  --color-panel2: #212938;
+  --color-border: #2a3240;
+  --color-paper: #f1e9d8;
+  --color-paperdark: #e4d9c0;
+  --color-amber: #e8a33d;
+  --color-amberdark: #c6821f;
+  --color-green: #4f9d69;
+  --color-red: #c1503f;
+  --color-slate2: #8791a6;
+  --color-ink2: #0f1319;
+  --color-muted: #7c8598;
+
+  /* Font families mapped to next/font CSS variables */
+  --font-display: var(--font-space-grotesk), sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), monospace;
+  --font-body: var(--font-inter), sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: #14181f;
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(255, 255, 255, 0.035) 1px,
+    transparent 0
+  );
+  background-size: 22px 22px;
+  font-family: var(--font-body);
+}
+
+::selection {
+  background: #e8a33d;
+  color: #14181f;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #14181f;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a3240;
+  border-radius: 6px;
+}
+
+:focus-visible {
+  outline: 2px solid #e8a33d;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Stub card — ticket-stub style card */
+.stub-card {
+  position: relative;
+  display: flex;
+  background: #f1e9d8;
+  border-radius: 8px;
+  overflow: visible;
+  box-shadow:
+    0 12px 24px -10px rgba(0, 0, 0, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.stub-strip {
+  width: 18px;
+  flex-shrink: 0;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  position: relative;
+}
+
+.stub-strip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.12) 0 4px,
+    transparent 4px 9px
+  );
+}
+
+.stub-divider {
+  position: relative;
+  width: 1px;
+  border-left: 2px dashed rgba(20, 24, 31, 0.32);
+  margin: 10px 0;
+  align-self: stretch;
+}
+
+.stub-divider::before,
+.stub-divider::after {
+  content: "";
+  position: absolute;
+  left: -8px;
+  width: 16px;
+  height: 16px;
+  background: #14181f;
+  border-radius: 50%;
+}
+
+.stub-divider::before {
+  top: -18px;
+}
+
+.stub-divider::after {
+  bottom: -18px;
+}
+
+.stub-card.closed-card {
+  filter: grayscale(0.55);
+  opacity: 0.62;
+}
+
+/* Status stamp badge */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.63rem;
+  padding: 0.28rem 0.55rem;
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  transform: rotate(-2.5deg);
+  font-weight: 700;
+}
+
+/* Dark panel container */
+.panel-card {
+  background: #1b212b;
+  border: 1px solid #2a3240;
+  border-radius: 10px;
+}
+
+/* Torn bottom edge effect */
+.torn-bottom {
+  position: relative;
+}
+
+.torn-bottom::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 10px;
+  background-image: radial-gradient(
+    circle at 6px 0,
+    transparent 6px,
+    #14181f 6.5px
+  );
+  background-size: 12px 12px;
+  background-repeat: repeat-x;
+}
+
+/* Rise-in entrance animation */
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise-in {
+  animation: riseIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none;
+  }
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  background: rgba(10, 12, 16, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+/* Form field label */
+.field-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #7c8598;
+}
+
+/* Form input styles */
+input[type="text"],
+input[type="password"],
+input[type="date"],
+textarea,
+select {
+  background: #0f1319;
+  border: 1px solid #2a3240;
+  color: #edeff3;
+  border-radius: 7px;
+  padding: 0.6rem 0.75rem;
+  width: 100%;
+  font-size: 0.92rem;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #4b5568;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="date"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #e8a33d;
+  box-shadow: 0 0 0 3px rgba(232, 163, 61, 0.18);
+}
+
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%237C8598' viewBox='0 0 16 16'><path d='M8 11 3 6h10z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  padding-right: 2rem;
+}
+
+/* Button base style */
+.btn {
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  border-radius: 7px;
+  padding: 0.6rem 1rem;
+  font-size: 0.83rem;
+  transition:
+    transform 0.12s ease,
+    filter 0.12s ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.ticket-punch {
+  position: relative;
+}

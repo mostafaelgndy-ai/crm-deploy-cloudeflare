@@ -1,0 +1,1445 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OPS/DESK — Ticket System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#14181F",
+              panel: "#1B212B",
+              panel2: "#212938",
+              border: "#2A3240",
+              paper: "#F1E9D8",
+              paperdark: "#E4D9C0",
+              amber: "#E8A33D",
+              amberdark: "#C6821F",
+              green: "#4F9D69",
+              red: "#C1503F",
+              slate2: "#8791A6",
+              ink2: "#0F1319",
+              muted: "#7C8598",
+            },
+            fontFamily: {
+              display: ['"Space Grotesk"', "sans-serif"],
+              mono: ['"IBM Plex Mono"', "monospace"],
+              body: ['"Inter"', "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      * {
+        -webkit-tap-highlight-color: transparent;
+      }
+      html {
+        color-scheme: dark;
+      }
+      body {
+        background-color: #14181f;
+        background-image: radial-gradient(
+          circle at 1px 1px,
+          rgba(255, 255, 255, 0.035) 1px,
+          transparent 0
+        );
+        background-size: 22px 22px;
+        font-family: "Inter", sans-serif;
+      }
+      ::selection {
+        background: #e8a33d;
+        color: #14181f;
+      }
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #14181f;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2a3240;
+        border-radius: 6px;
+      }
+      :focus-visible {
+        outline: 2px solid #e8a33d;
+        outline-offset: 2px;
+        border-radius: 2px;
+      }
+
+      .stub-card {
+        position: relative;
+        display: flex;
+        background: #f1e9d8;
+        border-radius: 8px;
+        overflow: visible;
+        box-shadow:
+          0 12px 24px -10px rgba(0, 0, 0, 0.55),
+          0 2px 6px rgba(0, 0, 0, 0.35);
+      }
+      .stub-strip {
+        width: 18px;
+        flex-shrink: 0;
+        border-top-left-radius: 8px;
+        border-bottom-left-radius: 8px;
+        position: relative;
+      }
+      .stub-strip::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: repeating-linear-gradient(
+          -45deg,
+          rgba(255, 255, 255, 0.12) 0 4px,
+          transparent 4px 9px
+        );
+      }
+      .stub-divider {
+        position: relative;
+        width: 1px;
+        border-left: 2px dashed rgba(20, 24, 31, 0.32);
+        margin: 10px 0;
+        align-self: stretch;
+      }
+      .stub-divider::before,
+      .stub-divider::after {
+        content: "";
+        position: absolute;
+        left: -8px;
+        width: 16px;
+        height: 16px;
+        background: #14181f;
+        border-radius: 50%;
+      }
+      .stub-divider::before {
+        top: -18px;
+      }
+      .stub-divider::after {
+        bottom: -18px;
+      }
+      .stub-card.closed-card {
+        filter: grayscale(0.55);
+        opacity: 0.62;
+      }
+
+      .stamp {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-family: "IBM Plex Mono", monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.63rem;
+        padding: 0.28rem 0.55rem;
+        border: 2px solid currentColor;
+        border-radius: 5px;
+        transform: rotate(-2.5deg);
+        font-weight: 700;
+      }
+
+      .panel-card {
+        background: #1b212b;
+        border: 1px solid #2a3240;
+        border-radius: 10px;
+      }
+
+      .torn-bottom {
+        position: relative;
+      }
+      .torn-bottom::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -1px;
+        height: 10px;
+        background-image: radial-gradient(
+          circle at 6px 0,
+          transparent 6px,
+          #14181f 6.5px
+        );
+        background-size: 12px 12px;
+        background-repeat: repeat-x;
+      }
+
+      @keyframes riseIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .rise-in {
+        animation: riseIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .rise-in {
+          animation: none;
+        }
+      }
+
+      .modal-backdrop {
+        background: rgba(10, 12, 16, 0.72);
+        backdrop-filter: blur(2px);
+      }
+
+      .field-label {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.68rem;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: #7c8598;
+      }
+
+      input[type="text"],
+      input[type="password"],
+      input[type="date"],
+      textarea,
+      select {
+        background: #0f1319;
+        border: 1px solid #2a3240;
+        color: #edeff3;
+        border-radius: 7px;
+        padding: 0.6rem 0.75rem;
+        width: 100%;
+        font-size: 0.92rem;
+      }
+      input::placeholder,
+      textarea::placeholder {
+        color: #4b5568;
+      }
+      input[type="text"]:focus,
+      input[type="password"]:focus,
+      input[type="date"]:focus,
+      textarea:focus,
+      select:focus {
+        outline: none;
+        border-color: #e8a33d;
+        box-shadow: 0 0 0 3px rgba(232, 163, 61, 0.18);
+      }
+      select {
+        -webkit-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%237C8598' viewBox='0 0 16 16'><path d='M8 11 3 6h10z'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 0.7rem center;
+        padding-right: 2rem;
+      }
+
+      .btn {
+        font-family: "IBM Plex Mono", monospace;
+        letter-spacing: 0.04em;
+        font-weight: 600;
+        border-radius: 7px;
+        padding: 0.6rem 1rem;
+        font-size: 0.83rem;
+        transition:
+          transform 0.12s ease,
+          filter 0.12s ease;
+      }
+      .btn:active {
+        transform: scale(0.97);
+      }
+      .ticket-punch {
+        position: relative;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-[#EDEFF3] font-body">
+    <div id="app" class="min-h-screen flex flex-col"></div>
+    <div id="modal-root"></div>
+
+    <script>
+      /* =========================================================
+   OPS/DESK — internal ticket system prototype
+   Mock backend via localStorage. Hash-based routing:
+   #/            -> project board  (employee, auth required)
+   #/login       -> employee login
+   #/project/ID  -> tickets for a project
+   #/ticket/ID   -> ticket detail
+   #/admin       -> admin login / admin dashboard
+   ========================================================= */
+
+      const LS = {
+        projects: "opsdesk_projects",
+        tickets: "opsdesk_tickets",
+        employees: "opsdesk_employees",
+        empSession: "opsdesk_employee_session",
+        adminSession: "opsdesk_admin_remember",
+      };
+
+      const ADMIN = { username: "mostafa_elgondy", password: "6789yuio#Y" };
+
+      const STATUS_META = {
+        pending: { label: "Pending", color: "#8791A6" },
+        onGoing: { label: "Still Working on it...", color: "#E8A33D" },
+        completed: { label: "Completed", color: "#4F9D69" },
+        closed: { label: "Closed", color: "#C1503F" },
+      };
+
+      function uid(prefix) {
+        return prefix + "_" + Math.random().toString(36).slice(2, 9);
+      }
+      function todayISO() {
+        return new Date().toISOString().slice(0, 10);
+      }
+      function escapeHtml(str) {
+        return String(str ?? "").replace(
+          /[&<>"']/g,
+          (m) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[m],
+        );
+      }
+      function fmtDate(d) {
+        if (!d) return "—";
+        const dt = new Date(d + "T00:00:00");
+        if (isNaN(dt)) return d;
+        return dt.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        });
+      }
+      function save(key, val) {
+        localStorage.setItem(key, JSON.stringify(val));
+      }
+      function load(key, fallback) {
+        try {
+          const v = JSON.parse(localStorage.getItem(key));
+          return v ?? fallback;
+        } catch (e) {
+          return fallback;
+        }
+      }
+
+      /* ---------------- seed data ---------------- */
+      function seed() {
+        if (!localStorage.getItem(LS.projects)) {
+          save(LS.projects, [
+            {
+              id: "p1",
+              title: "Website Redesign",
+              description:
+                "Rebuilding the marketing site on the new design system, section by section.",
+              startedAt: "2026-05-01",
+              expectedEndAt: "2026-08-15",
+              closed: false,
+            },
+            {
+              id: "p2",
+              title: "Mobile App v2",
+              description:
+                "Second major release of the internal field-ops mobile app.",
+              startedAt: "2026-04-10",
+              expectedEndAt: "2026-09-30",
+              closed: false,
+            },
+            {
+              id: "p3",
+              title: "Payment Gateway Migration",
+              description:
+                "Moving all billing off the legacy processor to the new provider.",
+              startedAt: "2026-02-01",
+              expectedEndAt: "2026-06-01",
+              closed: true,
+            },
+          ]);
+        }
+        if (!localStorage.getItem(LS.tickets)) {
+          save(LS.tickets, [
+            {
+              id: "t1",
+              projectId: "p1",
+              title: "Fix hero section spacing",
+              description:
+                "Spacing looks off between the hero and the nav on smaller screens.",
+              from: "Mostafa Elgondy",
+              to: "Youssef Adel",
+              deadline: "2026-08-10",
+              startsAt: "2026-06-02",
+              endsAt: null,
+              status: "onGoing",
+              agentDescription:
+                "Reduce the top padding of the hero section to 64px on viewports under 768px, and confirm the nav no longer overlaps the headline on iPhone SE and iPhone 14 widths.",
+              arabicDescription:
+                "قلل الحشو العلوي لقسم الهيرو إلى 64 بكسل على الشاشات الأصغر من 768 بكسل، وتأكد من عدم تداخل شريط التنقل مع العنوان.",
+            },
+            {
+              id: "t2",
+              projectId: "p1",
+              title: "Add newsletter signup form",
+              description:
+                "Marketing wants an email capture block above the footer.",
+              from: "Mostafa Elgondy",
+              to: "Sara Hossam",
+              deadline: "2026-07-20",
+              startsAt: "2026-06-05",
+              endsAt: null,
+              status: "pending",
+              agentDescription:
+                "Add a two-field form (name, email) above the footer that posts to the /subscribe endpoint and shows a success state inline.",
+              arabicDescription: "",
+            },
+            {
+              id: "t3",
+              projectId: "p1",
+              title: "Optimize hero image",
+              description: "Hero image is 4.2MB and slowing first paint.",
+              from: "Youssef Adel",
+              to: "Mostafa Elgondy",
+              deadline: "2026-06-15",
+              startsAt: "2026-05-20",
+              endsAt: "2026-06-10",
+              status: "completed",
+              agentDescription:
+                "Compress and serve the hero image as WebP with a JPEG fallback, target under 200KB without visible quality loss.",
+              arabicDescription:
+                "ضغط صورة الهيرو وتقديمها بصيغة WebP مع نسخة احتياطية JPEG، بحد أقصى 200 كيلوبايت.",
+            },
+            {
+              id: "t4",
+              projectId: "p2",
+              title: "Push notification permission flow",
+              description:
+                "Users are dismissing the permission prompt too early.",
+              from: "Mostafa Elgondy",
+              to: "Sara Hossam",
+              deadline: "2026-08-01",
+              startsAt: "2026-06-01",
+              endsAt: null,
+              status: "onGoing",
+              agentDescription:
+                "Add a soft pre-permission screen explaining why notifications matter before triggering the native OS prompt.",
+              arabicDescription: "",
+            },
+            {
+              id: "t5",
+              projectId: "p2",
+              title: "Offline mode for ticket list",
+              description:
+                "App should cache the last ticket list for offline viewing.",
+              from: "Mostafa Elgondy",
+              to: "Youssef Adel",
+              deadline: "2026-09-10",
+              startsAt: "2026-07-01",
+              endsAt: null,
+              status: "pending",
+              agentDescription:
+                'Cache the most recent successful ticket list response and render it with an "offline copy" banner when the network request fails.',
+              arabicDescription: "",
+            },
+            {
+              id: "t6",
+              projectId: "p3",
+              title: "Disable legacy webhook",
+              description:
+                "Old processor webhook should be turned off after cutover.",
+              from: "Mostafa Elgondy",
+              to: "Youssef Adel",
+              deadline: "2026-06-01",
+              startsAt: "2026-05-01",
+              endsAt: "2026-05-30",
+              status: "closed",
+              agentDescription:
+                "Remove the legacy webhook subscription from the old processor dashboard and archive its logs before decommissioning.",
+              arabicDescription: "",
+            },
+          ]);
+        }
+        if (!localStorage.getItem(LS.employees)) {
+          save(LS.employees, [
+            { username: "youssef.dev", password: "2468" },
+            { username: "sara.qa", password: "1357" },
+          ]);
+        }
+      }
+
+      /* ---------------- auth ---------------- */
+      function empSession() {
+        return load(LS.empSession, null);
+      }
+      function isEmpAuthed() {
+        return !!empSession();
+      }
+      function isAdminAuthed() {
+        return localStorage.getItem(LS.adminSession) === "1";
+      }
+
+      /* ---------------- router ---------------- */
+      function currentPath() {
+        const h = location.hash.replace(/^#/, "");
+        return h === "" ? "/" : h;
+      }
+      function navigate(path) {
+        location.hash = path;
+      }
+      window.addEventListener("hashchange", render);
+      window.addEventListener("DOMContentLoaded", () => {
+        seed();
+        render();
+      });
+
+      function render() {
+        const path = currentPath();
+        const parts = path.split("/").filter(Boolean); // e.g. ['project','p1']
+
+        if (path === "/") {
+          if (!isEmpAuthed()) return navigate("/login");
+          return renderProjectsPage();
+        }
+        if (path === "/login") {
+          if (isEmpAuthed()) return navigate("/");
+          return renderLoginPage();
+        }
+        if (parts[0] === "project" && parts[1]) {
+          if (!isEmpAuthed()) return navigate("/login");
+          return renderProjectTicketsPage(parts[1]);
+        }
+        if (parts[0] === "ticket" && parts[1]) {
+          if (!isEmpAuthed()) return navigate("/login");
+          return renderTicketDetailPage(parts[1]);
+        }
+        if (parts[0] === "admin") {
+          return isAdminAuthed() ? renderAdminPage() : renderAdminLoginPage();
+        }
+        // fallback
+        return navigate("/");
+      }
+
+      const app = document.getElementById("app");
+      function mount(html) {
+        app.innerHTML = html;
+      }
+
+      /* ---------------- shared chrome ---------------- */
+      function topBar({ context, right }) {
+        return `
+  <header class="border-b border-[#2A3240] bg-[#14181F]/95 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-5 md:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-md bg-amber text-ink2 flex items-center justify-center font-mono font-bold text-sm rotate-[-4deg]">OD</div>
+        <div class="leading-tight">
+          <div class="font-display font-700 tracking-tight text-[15px] text-[#EDEFF3]">OPS<span class="text-amber">/</span>DESK</div>
+          <div class="text-[10px] font-mono tracking-widest text-muted uppercase">${context}</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">${right}</div>
+    </div>
+  </header>`;
+      }
+
+      function crumbLink(label, path) {
+        return `<a href="#${path}" class="text-muted hover:text-amber transition">${escapeHtml(label)}</a>`;
+      }
+
+      /* =========================================================
+   EMPLOYEE: LOGIN
+   ========================================================= */
+      function renderLoginPage() {
+        mount(`
+  <div class="flex-1 flex items-center justify-center px-5">
+    <div class="w-full max-w-sm rise-in">
+      <div class="text-center mb-8">
+        <div class="w-12 h-12 mx-auto rounded-lg bg-amber text-ink2 flex items-center justify-center font-mono font-bold rotate-[-4deg] mb-4">OD</div>
+        <h1 class="font-display text-2xl font-700 tracking-tight">Sign in to OPS/DESK</h1>
+        <p class="text-sm text-muted mt-1">Use the credentials your admin gave you.</p>
+      </div>
+      <form id="login-form" class="panel-card p-6 space-y-4">
+        <div>
+          <label class="field-label block mb-1.5">Username</label>
+          <input type="text" id="lg-username" autocomplete="username" placeholder="e.g. youssef.dev" required />
+        </div>
+        <div>
+          <label class="field-label block mb-1.5">Password</label>
+          <input type="password" id="lg-password" autocomplete="current-password" placeholder="At least 4 numbers" required />
+          <p class="text-[11px] text-muted mt-1.5">Passwords are numeric, 4 digits or more.</p>
+        </div>
+        <p id="login-error" class="text-sm text-red hidden"></p>
+        <button type="submit" class="btn w-full bg-amber text-ink2 hover:brightness-105">SIGN IN →</button>
+      </form>
+      <p class="text-center text-xs text-muted mt-6">Administrator? <a href="#/admin" class="text-amber hover:underline">Go to the admin desk</a></p>
+    </div>
+  </div>`);
+
+        document
+          .getElementById("login-form")
+          .addEventListener("submit", (e) => {
+            e.preventDefault();
+            const username = document
+              .getElementById("lg-username")
+              .value.trim();
+            const password = document
+              .getElementById("lg-password")
+              .value.trim();
+            const errEl = document.getElementById("login-error");
+            errEl.classList.add("hidden");
+
+            if (!/^\d{4,}$/.test(password)) {
+              errEl.textContent = "Password must be at least 4 numbers.";
+              errEl.classList.remove("hidden");
+              return;
+            }
+            const employees = load(LS.employees, []);
+            const match = employees.find(
+              (emp) => emp.username === username && emp.password === password,
+            );
+            if (!match) {
+              errEl.textContent =
+                "That username and password don\u2019t match our records.";
+              errEl.classList.remove("hidden");
+              return;
+            }
+            save(LS.empSession, { username: match.username });
+            navigate("/");
+          });
+      }
+
+      /* =========================================================
+   EMPLOYEE: PROJECT BOARD  (#/)
+   ========================================================= */
+      function renderProjectsPage() {
+        const projects = load(LS.projects, []);
+        const sess = empSession();
+
+        const cards = projects.length
+          ? projects.map((p) => projectCard(p)).join("")
+          : `
+    <div class="col-span-full panel-card p-10 text-center text-muted">
+      <p class="font-display text-lg text-[#EDEFF3] mb-1">No projects yet</p>
+      <p class="text-sm">Your admin hasn\u2019t opened a project. Check back soon.</p>
+    </div>`;
+
+        mount(`
+  ${topBar({
+    context: "Project Board",
+    right: `
+    <span class="text-sm text-muted hidden sm:inline">Signed in as <span class="text-[#EDEFF3] font-medium">${escapeHtml(sess.username)}</span></span>
+    <button id="logout-btn" class="btn bg-[#212938] border border-[#2A3240] text-[#EDEFF3] hover:border-red hover:text-red">SIGN OUT</button>
+  `,
+  })}
+  <main class="flex-1 max-w-6xl w-full mx-auto px-5 md:px-8 py-10">
+    <div class="mb-8">
+      <h1 class="font-display text-2xl md:text-3xl font-700 tracking-tight">Current Projects</h1>
+      <p class="text-muted text-sm mt-1">Pick a project to see its open tickets.</p>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-3">
+      ${cards}
+    </div>
+  </main>`);
+
+        document.getElementById("logout-btn").addEventListener("click", () => {
+          localStorage.removeItem(LS.empSession);
+          navigate("/login");
+        });
+      }
+
+      function projectCard(p) {
+        const clickable = !p.closed;
+        const wrapTag = clickable ? "a" : "div";
+        const hrefAttr = clickable ? `href="#/project/${p.id}"` : "";
+        return `
+  <${wrapTag} ${hrefAttr} class="stub-card ${p.closed ? "closed-card" : ""} group ${clickable ? "cursor-pointer" : "cursor-not-allowed"} rise-in">
+    <div class="stub-strip" style="background:${p.closed ? "#C1503F" : "#E8A33D"}"></div>
+    <div class="stub-divider"></div>
+    <div class="flex-1 p-5 text-ink2 min-w-0">
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <h3 class="font-display font-700 text-[17px] leading-snug ${clickable ? "group-hover:text-amberdark" : ""} transition">${escapeHtml(p.title)}</h3>
+        ${p.closed ? `<span class="stamp shrink-0" style="color:#C1503F">Closed</span>` : ""}
+      </div>
+      <p class="text-[13.5px] text-[#4A4032] leading-relaxed mb-4 line-clamp-3">${escapeHtml(p.description)}</p>
+      <div class="flex items-center justify-between text-[11px] font-mono uppercase tracking-wide text-[#7A6E56] border-t border-dashed border-[#C9BC9C] pt-3">
+        <span>Start ${fmtDate(p.startedAt)}</span>
+        <span>Due ${fmtDate(p.expectedEndAt)}</span>
+      </div>
+    </div>
+  </${wrapTag}>`;
+      }
+
+      /* =========================================================
+   EMPLOYEE: TICKETS FOR A PROJECT  (#/project/:id)
+   ========================================================= */
+      function renderProjectTicketsPage(projectId) {
+        const projects = load(LS.projects, []);
+        const project = projects.find((p) => p.id === projectId);
+        if (!project) {
+          mount(`${topBar({ context: "Not found", right: "" })}
+      <main class="flex-1 max-w-6xl w-full mx-auto px-5 md:px-8 py-16 text-center">
+        <p class="font-display text-xl mb-2">This project doesn\u2019t exist</p>
+        <a href="#/" class="text-amber hover:underline text-sm">← Back to the project board</a>
+      </main>`);
+          return;
+        }
+        const tickets = load(LS.tickets, []).filter(
+          (t) => t.projectId === projectId,
+        );
+        const sess = empSession();
+
+        const cards = tickets.length
+          ? tickets.map((t) => ticketCard(t)).join("")
+          : `
+    <div class="col-span-full panel-card p-10 text-center text-muted">
+      <p class="font-display text-lg text-[#EDEFF3] mb-1">No tickets here yet</p>
+      <p class="text-sm">Nothing has been filed for this project.</p>
+    </div>`;
+
+        mount(`
+  ${topBar({
+    context: "Project Tickets",
+    right: `
+    <span class="text-sm text-muted hidden sm:inline">Signed in as <span class="text-[#EDEFF3] font-medium">${escapeHtml(sess.username)}</span></span>
+    <button id="logout-btn" class="btn bg-[#212938] border border-[#2A3240] text-[#EDEFF3] hover:border-red hover:text-red">SIGN OUT</button>
+  `,
+  })}
+  <main class="flex-1 max-w-6xl w-full mx-auto px-5 md:px-8 py-10">
+    <nav class="text-sm mb-6 font-mono">${crumbLink("Projects", "/")} <span class="text-[#3A4252]">/</span> <span class="text-[#EDEFF3]">${escapeHtml(project.title)}</span></nav>
+    <div class="mb-8">
+      <h1 class="font-display text-2xl md:text-3xl font-700 tracking-tight">${escapeHtml(project.title)}</h1>
+      <p class="text-muted text-sm mt-1 max-w-2xl">${escapeHtml(project.description)}</p>
+      <div class="flex gap-4 text-[11px] font-mono uppercase tracking-wide text-muted mt-3">
+        <span>Start ${fmtDate(project.startedAt)}</span><span>·</span><span>Due ${fmtDate(project.expectedEndAt)}</span>
+      </div>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-3">
+      ${cards}
+    </div>
+  </main>`);
+
+        document.getElementById("logout-btn").addEventListener("click", () => {
+          localStorage.removeItem(LS.empSession);
+          navigate("/login");
+        });
+      }
+
+      function ticketCard(t) {
+        const meta = STATUS_META[t.status];
+        const clickable = t.status !== "closed";
+        const wrapTag = clickable ? "a" : "div";
+        const hrefAttr = clickable ? `href="#/ticket/${t.id}"` : "";
+        return `
+  <${wrapTag} ${hrefAttr} class="stub-card ${!clickable ? "closed-card" : ""} group ${clickable ? "cursor-pointer" : "cursor-not-allowed"} rise-in">
+    <div class="stub-strip" style="background:${meta.color}"></div>
+    <div class="stub-divider"></div>
+    <div class="flex-1 p-5 text-ink2 min-w-0">
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <h3 class="font-display font-700 text-[16px] leading-snug ${clickable ? "group-hover:text-amberdark" : ""} transition">${escapeHtml(t.title)}</h3>
+      </div>
+      <p class="text-[13px] text-[#4A4032] leading-relaxed mb-4 line-clamp-3">${escapeHtml(t.description)}</p>
+      <div class="pt-3 border-t border-dashed border-[#C9BC9C]">
+        <span class="stamp" style="color:${meta.color}">${escapeHtml(meta.label)}</span>
+      </div>
+    </div>
+  </${wrapTag}>`;
+      }
+
+      /* =========================================================
+   EMPLOYEE: TICKET DETAIL  (#/ticket/:id)
+   ========================================================= */
+      function renderTicketDetailPage(ticketId) {
+        const tickets = load(LS.tickets, []);
+        const t = tickets.find((x) => x.id === ticketId);
+        if (!t) {
+          mount(`${topBar({ context: "Not found", right: "" })}
+      <main class="flex-1 max-w-3xl w-full mx-auto px-5 md:px-8 py-16 text-center">
+        <p class="font-display text-xl mb-2">This ticket doesn\u2019t exist</p>
+        <a href="#/" class="text-amber hover:underline text-sm">← Back to the project board</a>
+      </main>`);
+          return;
+        }
+        const project = load(LS.projects, []).find((p) => p.id === t.projectId);
+        const meta = STATUS_META[t.status];
+        const sess = empSession();
+
+        mount(`
+  ${topBar({
+    context: "Ticket Detail",
+    right: `
+    <span class="text-sm text-muted hidden sm:inline">Signed in as <span class="text-[#EDEFF3] font-medium">${escapeHtml(sess.username)}</span></span>
+    <button id="logout-btn" class="btn bg-[#212938] border border-[#2A3240] text-[#EDEFF3] hover:border-red hover:text-red">SIGN OUT</button>
+  `,
+  })}
+  <main class="flex-1 max-w-3xl w-full mx-auto px-5 md:px-8 py-10">
+    <nav class="text-sm mb-6 font-mono">${crumbLink("Projects", "/")} <span class="text-[#3A4252]">/</span> ${project ? crumbLink(project.title, "/project/" + project.id) : "Project"} <span class="text-[#3A4252]">/</span> <span class="text-[#EDEFF3]">${escapeHtml(t.title)}</span></nav>
+
+    <div class="panel-card overflow-hidden rise-in">
+      <div class="p-6 md:p-8 border-b border-[#2A3240] torn-bottom">
+        <div class="flex items-start justify-between gap-4 mb-3">
+          <h1 class="font-display text-2xl font-700 tracking-tight">${escapeHtml(t.title)}</h1>
+          <span class="stamp shrink-0" style="color:${meta.color}">${escapeHtml(meta.label)}</span>
+        </div>
+        <p class="text-sm text-muted leading-relaxed">${escapeHtml(t.description)}</p>
+      </div>
+
+      <div class="p-6 md:p-8 pt-7 space-y-7">
+        <div class="grid sm:grid-cols-2 gap-5">
+          <div><p class="field-label mb-1">From</p><p class="text-[15px]">${escapeHtml(t.from)}</p></div>
+          <div><p class="field-label mb-1">To</p><p class="text-[15px]">${escapeHtml(t.to)}</p></div>
+        </div>
+        <div class="grid sm:grid-cols-3 gap-5 pt-5 border-t border-dashed border-[#2A3240]">
+          <div><p class="field-label mb-1">Deadline</p><p class="text-[15px] font-mono">${fmtDate(t.deadline)}</p></div>
+          <div><p class="field-label mb-1">Starts at</p><p class="text-[15px] font-mono">${fmtDate(t.startsAt)}</p></div>
+          <div><p class="field-label mb-1">Ends at</p><p class="text-[15px] font-mono">${t.endsAt ? fmtDate(t.endsAt) : "— auto-set on completion —"}</p></div>
+        </div>
+
+        <div class="pt-5 border-t border-dashed border-[#2A3240]">
+          <p class="field-label mb-2">Description <span class="normal-case text-[#5B6478]">(for the agent)</span></p>
+          <p class="text-[14.5px] leading-relaxed text-[#D7DAE2] whitespace-pre-wrap">${escapeHtml(t.agentDescription || "—")}</p>
+        </div>
+
+        ${
+          t.arabicDescription
+            ? `
+        <div class="pt-5 border-t border-dashed border-[#2A3240]" dir="rtl">
+          <p class="field-label mb-2" dir="ltr">Arabic description <span class="normal-case text-[#5B6478]">(for the developer)</span></p>
+          <p class="text-[14.5px] leading-relaxed text-[#D7DAE2] whitespace-pre-wrap">${escapeHtml(t.arabicDescription)}</p>
+        </div>`
+            : ""
+        }
+
+        <div class="pt-5 border-t border-dashed border-[#2A3240] flex justify-end">
+          <button id="download-btn" class="btn bg-amber text-ink2 hover:brightness-105">⬇ DOWNLOAD TICKET (.md)</button>
+        </div>
+      </div>
+    </div>
+  </main>`);
+
+        document.getElementById("logout-btn").addEventListener("click", () => {
+          localStorage.removeItem(LS.empSession);
+          navigate("/login");
+        });
+        document
+          .getElementById("download-btn")
+          .addEventListener("click", () => downloadTicketMarkdown(t));
+      }
+
+      function downloadTicketMarkdown(t) {
+        const safeTitle = (t.title || "ticket")
+          .trim()
+          .replace(/[\\/:*?"<>|]/g, "-");
+        const content = t.agentDescription || "";
+        const blob = new Blob([content], {
+          type: "text/markdown;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${safeTitle}.md`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      /* =========================================================
+   ADMIN: LOGIN  (#/admin)
+   ========================================================= */
+      function renderAdminLoginPage() {
+        mount(`
+  <div class="flex-1 flex items-center justify-center px-5">
+    <div class="w-full max-w-sm rise-in">
+      <div class="text-center mb-8">
+        <div class="w-12 h-12 mx-auto rounded-lg bg-[#212938] border border-[#2A3240] text-amber flex items-center justify-center font-mono font-bold rotate-[-4deg] mb-4">A</div>
+        <h1 class="font-display text-2xl font-700 tracking-tight">Admin desk</h1>
+        <p class="text-sm text-muted mt-1">Manage projects, tickets and staff accounts.</p>
+      </div>
+      <form id="admin-login-form" class="panel-card p-6 space-y-4">
+        <div>
+          <label class="field-label block mb-1.5">Username</label>
+          <input type="text" id="ad-username" autocomplete="username" placeholder="Admin username" required />
+        </div>
+        <div>
+          <label class="field-label block mb-1.5">Password</label>
+          <input type="password" id="ad-password" autocomplete="current-password" placeholder="Admin password" required />
+        </div>
+        <label class="flex items-center gap-2 text-sm text-muted"><input type="checkbox" id="ad-remember" checked class="accent-[#E8A33D]" /> Remember me on this device</label>
+        <p id="admin-login-error" class="text-sm text-red hidden"></p>
+        <button type="submit" class="btn w-full bg-amber text-ink2 hover:brightness-105">ENTER ADMIN DESK →</button>
+      </form>
+      <p class="text-center text-xs text-muted mt-6"><a href="#/login" class="text-amber hover:underline">← Back to employee sign in</a></p>
+    </div>
+  </div>`);
+
+        document
+          .getElementById("admin-login-form")
+          .addEventListener("submit", (e) => {
+            e.preventDefault();
+            const username = document
+              .getElementById("ad-username")
+              .value.trim();
+            const password = document
+              .getElementById("ad-password")
+              .value.trim();
+            const remember = document.getElementById("ad-remember").checked;
+            const errEl = document.getElementById("admin-login-error");
+            errEl.classList.add("hidden");
+            if (username !== ADMIN.username || password !== ADMIN.password) {
+              errEl.textContent = "Incorrect admin username or password.";
+              errEl.classList.remove("hidden");
+              return;
+            }
+            if (remember) localStorage.setItem(LS.adminSession, "1");
+            else localStorage.setItem(LS.adminSession, "1"); // session persists per spec (auto-login after first login)
+            navigate("/admin");
+          });
+      }
+
+      /* =========================================================
+   ADMIN: DASHBOARD  (#/admin)
+   ========================================================= */
+      let adminTab = "projects";
+      function renderAdminPage() {
+        mount(`
+  ${topBar({
+    context: "Admin Desk",
+    right: `
+    <span class="text-sm text-muted hidden sm:inline">Signed in as <span class="text-[#EDEFF3] font-medium">${ADMIN.username}</span></span>
+    <button id="admin-logout-btn" class="btn bg-[#212938] border border-[#2A3240] text-[#EDEFF3] hover:border-red hover:text-red">SIGN OUT</button>
+  `,
+  })}
+  <main class="flex-1 max-w-6xl w-full mx-auto px-5 md:px-8 py-10">
+    <div class="mb-7 flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="font-display text-2xl md:text-3xl font-700 tracking-tight">Admin Desk</h1>
+        <p class="text-muted text-sm mt-1">Everything staff see on the board is edited here.</p>
+      </div>
+      <a href="#/" class="text-sm text-amber hover:underline font-mono">VIEW BOARD AS EMPLOYEE →</a>
+    </div>
+
+    <div class="flex gap-1 mb-8 border-b border-[#2A3240]" id="admin-tabs">
+      ${tabBtn("projects", "Projects")}
+      ${tabBtn("tickets", "Tickets")}
+      ${tabBtn("employees", "Employees")}
+    </div>
+
+    <div id="admin-tab-content"></div>
+  </main>`);
+
+        document
+          .getElementById("admin-logout-btn")
+          .addEventListener("click", () => {
+            localStorage.removeItem(LS.adminSession);
+            navigate("/admin");
+          });
+        document.querySelectorAll("[data-tab]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            adminTab = btn.dataset.tab;
+            renderAdminPage();
+          });
+        });
+        renderAdminTabContent();
+      }
+
+      function tabBtn(id, label) {
+        const active = adminTab === id;
+        return `<button data-tab="${id}" class="px-4 py-2.5 text-sm font-mono uppercase tracking-wide border-b-2 -mb-px transition ${active ? "border-amber text-amber" : "border-transparent text-muted hover:text-[#EDEFF3]"}">${label}</button>`;
+      }
+
+      function renderAdminTabContent() {
+        const el = document.getElementById("admin-tab-content");
+        if (adminTab === "projects") return renderAdminProjectsTab(el);
+        if (adminTab === "tickets") return renderAdminTicketsTab(el);
+        if (adminTab === "employees") return renderAdminEmployeesTab(el);
+      }
+
+      /* ---- Admin: Projects tab ---- */
+      function renderAdminProjectsTab(el) {
+        const projects = load(LS.projects, []);
+        el.innerHTML = `
+    <div class="flex justify-end mb-5">
+      <button id="add-project-btn" class="btn bg-amber text-ink2 hover:brightness-105">+ NEW PROJECT</button>
+    </div>
+    <div class="space-y-3">
+      ${projects.length ? projects.map((p) => adminProjectRow(p)).join("") : emptyRow("No projects yet. Create the first one above.")}
+    </div>`;
+        document
+          .getElementById("add-project-btn")
+          .addEventListener("click", () => openProjectForm());
+        projects.forEach((p) => {
+          const editBtn = document.getElementById("edit-p-" + p.id);
+          const closeBtn = document.getElementById("close-p-" + p.id);
+          const delBtn = document.getElementById("del-p-" + p.id);
+          if (editBtn)
+            editBtn.addEventListener("click", () => openProjectForm(p));
+          if (closeBtn)
+            closeBtn.addEventListener("click", () => toggleProjectClosed(p.id));
+          if (delBtn)
+            delBtn.addEventListener("click", () =>
+              openDeleteConfirm({
+                title: p.title,
+                onConfirm: () => {
+                  deleteProject(p.id);
+                },
+              }),
+            );
+        });
+      }
+
+      function adminProjectRow(p) {
+        return `
+  <div class="panel-card p-5 flex items-center justify-between gap-4 flex-wrap ${p.closed ? "opacity-60" : ""}">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        <h3 class="font-display font-600 text-[15px] truncate">${escapeHtml(p.title)}</h3>
+        ${p.closed ? `<span class="stamp" style="color:#C1503F">Closed</span>` : ""}
+      </div>
+      <p class="text-[13px] text-muted mt-1 truncate max-w-lg">${escapeHtml(p.description)}</p>
+      <p class="text-[11px] font-mono text-muted mt-1.5">Start ${fmtDate(p.startedAt)} · Due ${fmtDate(p.expectedEndAt)}</p>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <button id="edit-p-${p.id}" class="btn bg-[#212938] border border-[#2A3240] hover:border-amber hover:text-amber text-xs">EDIT</button>
+      <button id="close-p-${p.id}" class="btn bg-[#212938] border border-[#2A3240] hover:border-slate2 text-xs">${p.closed ? "REOPEN" : "CLOSE"}</button>
+      <button id="del-p-${p.id}" class="btn bg-[#212938] border border-[#2A3240] hover:border-red hover:text-red text-xs">DELETE</button>
+    </div>
+  </div>`;
+      }
+
+      function openProjectForm(project) {
+        const isEdit = !!project;
+        openModal(`
+    <h2 class="font-display text-xl font-700 mb-5">${isEdit ? "Edit project" : "New project"}</h2>
+    <form id="project-form" class="space-y-4">
+      <div><label class="field-label block mb-1.5">Title</label><input type="text" id="pf-title" value="${escapeHtml(project?.title || "")}" placeholder="e.g. Website Redesign" required /></div>
+      <div><label class="field-label block mb-1.5">Description</label><textarea id="pf-desc" rows="3" placeholder="What is this project about?" required>${escapeHtml(project?.description || "")}</textarea></div>
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="field-label block mb-1.5">Started at</label><input type="date" id="pf-start" value="${project?.startedAt || todayISO()}" required /></div>
+        <div><label class="field-label block mb-1.5">Expected end at</label><input type="date" id="pf-end" value="${project?.expectedEndAt || ""}" required /></div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" id="pf-cancel" class="btn bg-[#212938] border border-[#2A3240]">CANCEL</button>
+        <button type="submit" class="btn bg-amber text-ink2 hover:brightness-105">${isEdit ? "SAVE CHANGES" : "CREATE PROJECT"}</button>
+      </div>
+    </form>
+  `);
+        document
+          .getElementById("pf-cancel")
+          .addEventListener("click", closeModal);
+        document
+          .getElementById("project-form")
+          .addEventListener("submit", (e) => {
+            e.preventDefault();
+            const title = document.getElementById("pf-title").value.trim();
+            const description = document.getElementById("pf-desc").value.trim();
+            const startedAt = document.getElementById("pf-start").value;
+            const expectedEndAt = document.getElementById("pf-end").value;
+            const projects = load(LS.projects, []);
+            if (isEdit) {
+              const idx = projects.findIndex((p) => p.id === project.id);
+              projects[idx] = {
+                ...projects[idx],
+                title,
+                description,
+                startedAt,
+                expectedEndAt,
+              };
+            } else {
+              projects.push({
+                id: uid("p"),
+                title,
+                description,
+                startedAt,
+                expectedEndAt,
+                closed: false,
+              });
+            }
+            save(LS.projects, projects);
+            closeModal();
+            renderAdminTabContent();
+          });
+      }
+
+      function toggleProjectClosed(id) {
+        const projects = load(LS.projects, []);
+        const idx = projects.findIndex((p) => p.id === id);
+        projects[idx].closed = !projects[idx].closed;
+        save(LS.projects, projects);
+        renderAdminTabContent();
+      }
+
+      function deleteProject(id) {
+        save(
+          LS.projects,
+          load(LS.projects, []).filter((p) => p.id !== id),
+        );
+        save(
+          LS.tickets,
+          load(LS.tickets, []).filter((t) => t.projectId !== id),
+        );
+        renderAdminTabContent();
+      }
+
+      /* ---- Admin: Tickets tab ---- */
+      let adminTicketsProjectFilter = "all";
+      function renderAdminTicketsTab(el) {
+        const projects = load(LS.projects, []);
+        const tickets = load(LS.tickets, []);
+        const filtered =
+          adminTicketsProjectFilter === "all"
+            ? tickets
+            : tickets.filter((t) => t.projectId === adminTicketsProjectFilter);
+
+        el.innerHTML = `
+    <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
+      <select id="ticket-project-filter" class="max-w-xs">
+        <option value="all">All projects</option>
+        ${projects.map((p) => `<option value="${p.id}" ${adminTicketsProjectFilter === p.id ? "selected" : ""}>${escapeHtml(p.title)}</option>`).join("")}
+      </select>
+      <button id="add-ticket-btn" class="btn bg-amber text-ink2 hover:brightness-105" ${projects.length ? "" : "disabled"}>+ NEW TICKET</button>
+    </div>
+    <div class="space-y-3">
+      ${filtered.length ? filtered.map((t) => adminTicketRow(t, projects)).join("") : emptyRow(projects.length ? "No tickets match this filter." : "Create a project first, then add tickets to it.")}
+    </div>`;
+
+        document
+          .getElementById("ticket-project-filter")
+          .addEventListener("change", (e) => {
+            adminTicketsProjectFilter = e.target.value;
+            renderAdminTicketsTab(el);
+          });
+        const addBtn = document.getElementById("add-ticket-btn");
+        if (addBtn)
+          addBtn.addEventListener("click", () =>
+            openTicketForm(null, projects),
+          );
+
+        filtered.forEach((t) => {
+          const editBtn = document.getElementById("edit-t-" + t.id);
+          const delBtn = document.getElementById("del-t-" + t.id);
+          if (editBtn)
+            editBtn.addEventListener("click", () =>
+              openTicketForm(t, projects),
+            );
+          if (delBtn)
+            delBtn.addEventListener("click", () =>
+              openDeleteConfirm({
+                title: t.title,
+                onConfirm: () => {
+                  deleteTicket(t.id);
+                },
+              }),
+            );
+        });
+      }
+
+      function adminTicketRow(t, projects) {
+        const meta = STATUS_META[t.status];
+        const project = projects.find((p) => p.id === t.projectId);
+        return `
+  <div class="panel-card p-5 flex items-center justify-between gap-4 flex-wrap">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2 flex-wrap">
+        <h3 class="font-display font-600 text-[15px] truncate">${escapeHtml(t.title)}</h3>
+        <span class="stamp" style="color:${meta.color}">${escapeHtml(meta.label)}</span>
+      </div>
+      <p class="text-[13px] text-muted mt-1 truncate max-w-lg">${escapeHtml(t.description)}</p>
+      <p class="text-[11px] font-mono text-muted mt-1.5">${project ? escapeHtml(project.title) : "Unassigned"} · From ${escapeHtml(t.from)} → ${escapeHtml(t.to)} · Due ${fmtDate(t.deadline)}</p>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <button id="edit-t-${t.id}" class="btn bg-[#212938] border border-[#2A3240] hover:border-amber hover:text-amber text-xs">EDIT</button>
+      <button id="del-t-${t.id}" class="btn bg-[#212938] border border-[#2A3240] hover:border-red hover:text-red text-xs">DELETE</button>
+    </div>
+  </div>`;
+      }
+
+      function openTicketForm(ticket, projects) {
+        const isEdit = !!ticket;
+        openModal(`
+    <h2 class="font-display text-xl font-700 mb-5">${isEdit ? "Edit ticket" : "New ticket"}</h2>
+    <form id="ticket-form" class="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
+      <div><label class="field-label block mb-1.5">Project</label>
+        <select id="tf-project" required>
+          ${projects.map((p) => `<option value="${p.id}" ${ticket?.projectId === p.id ? "selected" : ""}>${escapeHtml(p.title)}</option>`).join("")}
+        </select>
+      </div>
+      <div><label class="field-label block mb-1.5">Title</label><input type="text" id="tf-title" value="${escapeHtml(ticket?.title || "")}" placeholder="e.g. Fix hero section spacing" required /></div>
+      <div><label class="field-label block mb-1.5">Short description <span class="normal-case text-[#5B6478]">(shown on the card)</span></label><textarea id="tf-shortdesc" rows="2" required>${escapeHtml(ticket?.description || "")}</textarea></div>
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="field-label block mb-1.5">From</label><input type="text" id="tf-from" value="${escapeHtml(ticket?.from || ADMIN.username)}" required /></div>
+        <div><label class="field-label block mb-1.5">To</label><input type="text" id="tf-to" value="${escapeHtml(ticket?.to || "")}" placeholder="Assignee name" required /></div>
+      </div>
+      <div><label class="field-label block mb-1.5">Deadline</label><input type="date" id="tf-deadline" value="${ticket?.deadline || ""}" required /></div>
+      <div><label class="field-label block mb-1.5">Status</label>
+        <select id="tf-status">
+          ${Object.keys(STATUS_META)
+            .map(
+              (s) =>
+                `<option value="${s}" ${ticket?.status === s ? "selected" : ""}>${STATUS_META[s].label}</option>`,
+            )
+            .join("")}
+        </select>
+        <p class="text-[11px] text-muted mt-1.5">Starts-at is set automatically on creation. Ends-at is set automatically the first time status becomes Completed or Closed.</p>
+      </div>
+      <div><label class="field-label block mb-1.5">Description <span class="normal-case text-[#5B6478]">(for the agent)</span></label><textarea id="tf-agentdesc" rows="3" required>${escapeHtml(ticket?.agentDescription || "")}</textarea></div>
+      <div><label class="field-label block mb-1.5">Arabic description <span class="normal-case text-[#5B6478]">(for the developer, optional)</span></label><textarea id="tf-arabicdesc" rows="3" dir="rtl">${escapeHtml(ticket?.arabicDescription || "")}</textarea></div>
+      <div class="flex justify-end gap-2 pt-2 sticky bottom-0 bg-[#1B212B]">
+        <button type="button" id="tf-cancel" class="btn bg-[#212938] border border-[#2A3240]">CANCEL</button>
+        <button type="submit" class="btn bg-amber text-ink2 hover:brightness-105">${isEdit ? "SAVE CHANGES" : "CREATE TICKET"}</button>
+      </div>
+    </form>
+  `);
+        document
+          .getElementById("tf-cancel")
+          .addEventListener("click", closeModal);
+        document
+          .getElementById("ticket-form")
+          .addEventListener("submit", (e) => {
+            e.preventDefault();
+            const projectId = document.getElementById("tf-project").value;
+            const title = document.getElementById("tf-title").value.trim();
+            const description = document
+              .getElementById("tf-shortdesc")
+              .value.trim();
+            const from = document.getElementById("tf-from").value.trim();
+            const to = document.getElementById("tf-to").value.trim();
+            const deadline = document.getElementById("tf-deadline").value;
+            const status = document.getElementById("tf-status").value;
+            const agentDescription = document
+              .getElementById("tf-agentdesc")
+              .value.trim();
+            const arabicDescription = document
+              .getElementById("tf-arabicdesc")
+              .value.trim();
+
+            const tickets = load(LS.tickets, []);
+            if (isEdit) {
+              const idx = tickets.findIndex((t) => t.id === ticket.id);
+              const prevStatus = tickets[idx].status;
+              let endsAt = tickets[idx].endsAt;
+              if ((status === "completed" || status === "closed") && !endsAt)
+                endsAt = todayISO();
+              if (
+                status !== "completed" &&
+                status !== "closed" &&
+                prevStatus !== status
+              )
+                endsAt = tickets[idx].endsAt; // keep history, don't clear
+              tickets[idx] = {
+                ...tickets[idx],
+                projectId,
+                title,
+                description,
+                from,
+                to,
+                deadline,
+                status,
+                agentDescription,
+                arabicDescription,
+                endsAt,
+              };
+            } else {
+              tickets.push({
+                id: uid("t"),
+                projectId,
+                title,
+                description,
+                from,
+                to,
+                deadline,
+                startsAt: todayISO(),
+                endsAt:
+                  status === "completed" || status === "closed"
+                    ? todayISO()
+                    : null,
+                status,
+                agentDescription,
+                arabicDescription,
+              });
+            }
+            save(LS.tickets, tickets);
+            closeModal();
+            renderAdminTabContent();
+          });
+      }
+
+      function deleteTicket(id) {
+        save(
+          LS.tickets,
+          load(LS.tickets, []).filter((t) => t.id !== id),
+        );
+        renderAdminTabContent();
+      }
+
+      /* ---- Admin: Employees tab ---- */
+      function renderAdminEmployeesTab(el) {
+        const employees = load(LS.employees, []);
+        el.innerHTML = `
+    <div class="flex justify-end mb-5">
+      <button id="add-emp-btn" class="btn bg-amber text-ink2 hover:brightness-105">+ NEW EMPLOYEE</button>
+    </div>
+    <div class="space-y-3">
+      ${employees.length ? employees.map((e) => adminEmployeeRow(e)).join("") : emptyRow("No employees yet. Add the first account above.")}
+    </div>`;
+        document
+          .getElementById("add-emp-btn")
+          .addEventListener("click", () => openEmployeeForm());
+        employees.forEach((e) => {
+          const editBtn = document.getElementById("edit-e-" + e.username);
+          const delBtn = document.getElementById("del-e-" + e.username);
+          if (editBtn)
+            editBtn.addEventListener("click", () => openEmployeeForm(e));
+          if (delBtn)
+            delBtn.addEventListener("click", () =>
+              openDeleteConfirm({
+                title: e.username,
+                onConfirm: () => {
+                  deleteEmployee(e.username);
+                },
+              }),
+            );
+        });
+      }
+
+      function adminEmployeeRow(e) {
+        return `
+  <div class="panel-card p-5 flex items-center justify-between gap-4 flex-wrap">
+    <div class="min-w-0">
+      <h3 class="font-display font-600 text-[15px]">${escapeHtml(e.username)}</h3>
+      <p class="text-[12px] font-mono text-muted mt-1">password: ${"•".repeat(e.password.length)}</p>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <button id="edit-e-${e.username}" class="btn bg-[#212938] border border-[#2A3240] hover:border-amber hover:text-amber text-xs">EDIT</button>
+      <button id="del-e-${e.username}" class="btn bg-[#212938] border border-[#2A3240] hover:border-red hover:text-red text-xs">DELETE</button>
+    </div>
+  </div>`;
+      }
+
+      function openEmployeeForm(employee) {
+        const isEdit = !!employee;
+        openModal(`
+    <h2 class="font-display text-xl font-700 mb-5">${isEdit ? "Edit employee" : "New employee"}</h2>
+    <form id="emp-form" class="space-y-4">
+      <div><label class="field-label block mb-1.5">Username</label><input type="text" id="ef-username" value="${escapeHtml(employee?.username || "")}" placeholder="e.g. youssef.dev" required /></div>
+      <div><label class="field-label block mb-1.5">Password</label><input type="text" id="ef-password" value="${escapeHtml(employee?.password || "")}" placeholder="At least 4 numbers" required /></div>
+      <p id="emp-form-error" class="text-sm text-red hidden"></p>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" id="ef-cancel" class="btn bg-[#212938] border border-[#2A3240]">CANCEL</button>
+        <button type="submit" class="btn bg-amber text-ink2 hover:brightness-105">${isEdit ? "SAVE CHANGES" : "ADD EMPLOYEE"}</button>
+      </div>
+    </form>
+  `);
+        document
+          .getElementById("ef-cancel")
+          .addEventListener("click", closeModal);
+        document.getElementById("emp-form").addEventListener("submit", (e) => {
+          e.preventDefault();
+          const username = document.getElementById("ef-username").value.trim();
+          const password = document.getElementById("ef-password").value.trim();
+          const errEl = document.getElementById("emp-form-error");
+          errEl.classList.add("hidden");
+          if (!/^\d{4,}$/.test(password)) {
+            errEl.textContent = "Password must be at least 4 numbers.";
+            errEl.classList.remove("hidden");
+            return;
+          }
+          const employees = load(LS.employees, []);
+          const clash = employees.find(
+            (emp) =>
+              emp.username === username &&
+              (!isEdit || emp.username !== employee.username),
+          );
+          if (clash) {
+            errEl.textContent = "That username is already taken.";
+            errEl.classList.remove("hidden");
+            return;
+          }
+          if (isEdit) {
+            const idx = employees.findIndex(
+              (emp) => emp.username === employee.username,
+            );
+            employees[idx] = { username, password };
+          } else {
+            employees.push({ username, password });
+          }
+          save(LS.employees, employees);
+          closeModal();
+          renderAdminTabContent();
+        });
+      }
+
+      function deleteEmployee(username) {
+        save(
+          LS.employees,
+          load(LS.employees, []).filter((e) => e.username !== username),
+        );
+        renderAdminTabContent();
+      }
+
+      function emptyRow(text) {
+        return `<div class="panel-card p-10 text-center text-muted text-sm">${escapeHtml(text)}</div>`;
+      }
+
+      /* =========================================================
+   MODALS
+   ========================================================= */
+      function openModal(innerHtml) {
+        document.getElementById("modal-root").innerHTML = `
+  <div id="modal-backdrop" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+    <div class="panel-card w-full max-w-lg p-6 rise-in" role="dialog" aria-modal="true">
+      ${innerHtml}
+    </div>
+  </div>`;
+        document
+          .getElementById("modal-backdrop")
+          .addEventListener("click", (e) => {
+            if (e.target.id === "modal-backdrop") closeModal();
+          });
+        document.addEventListener("keydown", escCloseOnce);
+      }
+      function escCloseOnce(e) {
+        if (e.key === "Escape") {
+          closeModal();
+        }
+      }
+      function closeModal() {
+        document.getElementById("modal-root").innerHTML = "";
+        document.removeEventListener("keydown", escCloseOnce);
+      }
+
+      function openDeleteConfirm({ title, onConfirm }) {
+        openModal(`
+    <h2 class="font-display text-xl font-700 mb-2 text-red">Delete permanently?</h2>
+    <p class="text-sm text-muted mb-4 leading-relaxed">This removes <span class="text-[#EDEFF3] font-medium">${escapeHtml(title)}</span> from the database completely. This can\u2019t be undone.</p>
+    <p class="field-label mb-1.5">Type <span class="text-red">confirm</span> to continue</p>
+    <input type="text" id="confirm-input" placeholder="confirm" class="mb-2" autocomplete="off" />
+    <p id="confirm-error" class="text-sm text-red hidden mb-2">Type the word "confirm" exactly to delete.</p>
+    <div class="flex justify-end gap-2 pt-3">
+      <button type="button" id="confirm-cancel" class="btn bg-[#212938] border border-[#2A3240]">CANCEL</button>
+      <button type="button" id="confirm-delete" class="btn bg-red text-white hover:brightness-110">DELETE FOREVER</button>
+    </div>
+  `);
+        document
+          .getElementById("confirm-cancel")
+          .addEventListener("click", closeModal);
+        document
+          .getElementById("confirm-delete")
+          .addEventListener("click", () => {
+            const val = document.getElementById("confirm-input").value.trim();
+            if (val !== "confirm") {
+              document
+                .getElementById("confirm-error")
+                .classList.remove("hidden");
+              return;
+            }
+            onConfirm();
+            closeModal();
+          });
+      }
+    </script>
+  </body>
+</html>
